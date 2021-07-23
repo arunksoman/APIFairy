@@ -5,7 +5,12 @@ import sys
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from flask import current_app, Blueprint, render_template
-from flask_marshmallow import fields
+try:
+    from flask_marshmallow import fields
+    plain_marshmallow = False
+except ImportError:
+    from marshmallow import fields
+    plain_marshmallow = True
 try:
     from flask_marshmallow import sqla
 except ImportError:
@@ -137,10 +142,16 @@ class APIFairy:
             tags=tags,
         )
 
-        # configure flask-marshmallow URL types
-        ma_plugin.converter.field_mapping[fields.URLFor] = ('string', 'url')
-        ma_plugin.converter.field_mapping[fields.AbsoluteURLFor] = \
-            ('string', 'url')
+        # configure marshmallow URL types
+        if not plain_marshmallow:
+            ma_plugin.converter.field_mapping[fields.URLFor] = ('string', 'url')
+            ma_plugin.converter.field_mapping[fields.AbsoluteURLFor] = \
+                ('string', 'url')
+        # else:
+        #     # ma_plugin.converter.field_mapping[fields.Url] = ('string', 'url')
+        #     # ma_plugin.converter.field_mapping[fields.Url] = \
+        #     #     ('string', 'url')
+        #     pass
         if sqla is not None:
             ma_plugin.converter.field_mapping[sqla.HyperlinkRelated] = \
                 ('string', 'url')
@@ -222,10 +233,11 @@ class APIFairy:
                 if tag:
                     operation['tags'] = [tag]
                 docs = (view_func.__doc__ or '').strip().split('\n')
+                # print(docs)
                 if docs[0]:
                     operation['summary'] = docs[0]
                 if len(docs) > 1:
-                    operation['description'] = '\n'.join(docs[1:]).strip()
+                    operation['description'] = '\n'.join([''.join(docstr).strip() for docstr in docs[1:]])
                 if view_func._spec.get('response'):
                     code = str(view_func._spec['status_code'])
                     operation['responses'] = {

@@ -1,7 +1,7 @@
 from functools import wraps
 
 import flask
-from flask import current_app, Response
+from flask import current_app, Response, jsonify
 from webargs.flaskparser import FlaskParser as BaseFlaskParser
 
 from apifairy.exceptions import ValidationError
@@ -86,12 +86,15 @@ def response(schema, status_code=200, description=None):
 
         @wraps(f)
         def _response(*args, **kwargs):
+            # https://flask.palletsprojects.com/en/2.0.x/api/#flask.Response
             rv = f(*args, **kwargs)
             if isinstance(rv, Response):  # pragma: no cover
                 raise RuntimeError(
                     'The @response decorator cannot handle Response objects.')
             if isinstance(rv, tuple):
-                json = schema.jsonify(rv[0])
+                # print(rv)
+                # print(schema)
+                json = jsonify(rv[0])
                 if len(rv) == 2:
                     if not isinstance(rv[1], int):
                         rv = (json, status_code, rv[1])
@@ -103,7 +106,7 @@ def response(schema, status_code=200, description=None):
                     rv = (json, status_code)
                 return rv
             else:
-                return schema.jsonify(rv), status_code
+                return jsonify(rv), status_code
         return _response
     return decorator
 
